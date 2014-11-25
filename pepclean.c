@@ -1,7 +1,10 @@
 /* vim: set ts=8 sw=4 sts=4 et ai: */
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 static int pepclean(const char *filename);
@@ -10,6 +13,7 @@ static int do_work(const char *filename, const int *checks_to_run);
 
 static int has_line_issues(FILE *in);
 static int fix_line_issues(const char *filename);
+static int fix_line_issues_2(FILE *in, FILE *out);
 
 static int has_tail_issues(FILE *in);
 static int fix_tail_issues(const char *filename);
@@ -48,7 +52,8 @@ int main(int argc, const char **argv)
                "sed scripts and (b) does not touch (modify) any files that do "
                "not need any modification.\n"
                "\n"
-               "(Public Domain, Walter Doekes, 2014)\n");
+               "BEWARE: pepclean will not read past NULs!\n"
+               "Public Domain, Walter Doekes, 2014\n");
         return 0;
     }
 
@@ -90,7 +95,7 @@ static int needs_work(const char *filename, int *checks_to_run)
     
     fp = fopen(filename, "r");
     if (fp == NULL) {
-        fprintf(stderr, "%s: %s\n", filename, strerror(errno));
+        fprintf(stderr, "%s: fopen: %s\n", filename, strerror(errno));
         return -1;
     }
 
@@ -115,9 +120,8 @@ static int do_work(const char *filename, const int *checks_to_run)
     for (i = 0; i < checklist_len; ++i) {
         if (checks_to_run[i]) {
             int ret = checklist[i].fixfun(filename);
-            if (ret < 0) {
+            if (ret < 0)
                 return -1;
-            }
         }
     }
 
@@ -164,8 +168,111 @@ static int has_line_issues(FILE *in)
 
 static int fix_line_issues(const char *filename)
 {
-    /* Create temp file, overwrite the original when done. */
-    printf("fix_line_issues: FIXME: %s\n", filename);
+    /* Create temp file in same directory (to stay on same FS),
+     * overwrite the original when done. Don't forget to fix the
+     * permissions/ownership. */
+    char tmp_filename[strlen(filename) + 6 + 1];
+    char *p;
+    FILE *in = NULL;
+    FILE *out = NULL;
+    int fd;
+
+    p = tmp_filename;
+    strcpy(p, filename); /* safe */
+    p += strlen(filename);
+    strcpy(p, "XXXXXX"); /* safe */
+
+    fd = mkstemp(tmp_filename);
+    if (fd < 0) {
+        fprintf(stderr, "%s: mkstemp: %s\n", filename, strerror(errno));
+        return -1;
+    }
+
+    in = fopen(filename, "r");
+    if (in == NULL) {
+        fprintf(stderr, "%s: fopen: %s\n", filename, strerror(errno));
+        goto error;
+    }
+
+    out = fdopen(fd, "w");
+    if (out == NULL) {
+        fprintf(stderr, "%s/%d: fdopen: %s\n", tmp_filename, fd,
+                strerror(errno));
+        goto error;
+    }
+
+    /* Update ownership/permissions. Don't bail out on failure. */
+    {
+        struct stat st;
+        if (fstat(fileno(in), &st) != 0) {
+            fprintf(stderr, "%s/%d: fstat: %s\n", filename, fileno(in),
+                    strerror(errno));
+        } else {
+            if (fchmod(fileno(out), st.st_mode) != 0) {
+                fprintf(stderr, "%s/%d: fchmod: %s\n", tmp_filename,
+                        fileno(out), strerror(errno));
+            }
+            if (fchown(fileno(out), st.st_uid, st.st_gid) != 0) {
+                fprintf(stderr, "%s/%d: fchown: %s\n", tmp_filename,
+                        fileno(out), strerror(errno));
+            }
+        }
+    }
+
+    /* Do the actual work. */
+    if (fix_line_issues_2(in, out) < 0) {
+        goto error;
+    }
+
+    /* Ok. All is good. Overwrite the file. It is important that we
+     * check the return value of fclose(out) because we may run into
+     * file save (out of disk) issues. */
+    if (fclose(out) != 0)
+        goto error;
+    out = NULL;
+    if (fclose(in) != 0)
+        goto error;
+    in = NULL;
+
+    if (unlink(filename) != 0) {
+        fprintf(stderr, "%s: unlink: %s\n", filename, strerror(errno));
+        goto error;
+    }
+    if (rename(tmp_filename, filename) != 0) {
+        fprintf(stderr, "%s: rename: %s\n", tmp_filename, strerror(errno));
+        goto error;
+    }
+
+    return 0; 
+
+error:
+    if (out)
+        fclose(out);
+    if (in)
+        fclose(in);
+    if (unlink(tmp_filename) != 0)
+        fprintf(stderr, "%s: unlink: %s\n", tmp_filename, strerror(errno));
+
+    return -1;
+}
+
+static int fix_line_issues_2(FILE *in, FILE *out)
+{
+    char buf[BUFSIZ + 1];
+    size_t len;
+    buf[BUFSIZ] = '\0'; /* no overflows, ever */
+
+    while (1) {
+        /* Do any/all mangling on buf here. */
+        if (fgets(buf, BUFSIZ, in) == 0) {
+            return 0;
+        }
+        if (fputs(buf, out) < 0) {
+            return -1;
+        }
+    }
+
+    /* Never gets here. */
     return 0;
 }
 
@@ -219,7 +326,7 @@ static int fix_tail_issues(const char *filename)
 
     fp = fopen(filename, "r");
     if (fp == NULL) {
-        fprintf(stderr, "%s: %s\n", filename, strerror(errno));
+        fprintf(stderr, "%s: fopen: %s\n", filename, strerror(errno));
         return -1;
     }
 
@@ -279,7 +386,8 @@ static int fix_tail_issues(const char *filename)
         fp = NULL;
         truncate(filename, pos);
 
-        /* Are we done? */
+        /* Are we done? We are if the file size is 1 or less or if we
+         * truncated at position 2 or more. */
         if (i <= 1 || j > 1) {
             break;
         }
@@ -287,7 +395,7 @@ static int fix_tail_issues(const char *filename)
         /* Re-open if we're not done. */
         fp = fopen(filename, "r");
         if (fp == NULL) {
-            fprintf(stderr, "%s: %s\n", filename, strerror(errno));
+            fprintf(stderr, "%s: fopen: %s\n", filename, strerror(errno));
             return -1;
         }
     }
