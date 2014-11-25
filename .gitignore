@@ -1,5 +1,8 @@
 pepclean
 
+mangled
+expected
+
 # Object files
 *.o
 *.ko
