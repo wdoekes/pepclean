@@ -48,9 +48,10 @@ int main(int argc, const char **argv)
                "Pass one or more files as arguments to be modified inline.\n"
                "\n"
                "The idea is that this basic filter is (a) much faster than a "
-               "bunch of concatenated\n"
-               "sed scripts and (b) does not touch (modify) any files that do "
-               "not need any modification.\n"
+               "bunch of\n"
+               "concatenated sed scripts and (b) does not touch (modify) any "
+               "files that\n"
+               "do not need any modification.\n"
                "\n"
                "BEWARE: pepclean will not read past NULs!\n"
                "Public Domain, Walter Doekes, 2014\n");
@@ -367,7 +368,7 @@ static int fix_tail_issues(const char *filename)
     /* We can fix this inline. Just seek backwards until there is only
      * one LF left. */
     FILE *fp;
-    const char bufsize = 16; /* really small buffer */
+    const int bufsize = 16; /* really small buffer */
     char buf[bufsize + 1];
     int i, j;
     buf[bufsize] = '\0';
@@ -432,7 +433,11 @@ static int fix_tail_issues(const char *filename)
          * cope. */
         fclose(fp);
         fp = NULL;
-        truncate(filename, pos);
+
+        if (truncate(filename, pos) != 0) {
+            fprintf(stderr, "%s: truncate: %s\n", filename, strerror(errno));
+            return -1;
+        }
 
         /* Are we done? We are if the file size is 1 or less or if we
          * truncated at position 2 or more. */

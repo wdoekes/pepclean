@@ -1,3 +1,6 @@
+CFLAGS = -Wall -O3 -g
+LDFLAGS = -Wall -O3 -g
+
 .PHONY: all
 all: pepclean test
 
