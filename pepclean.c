@@ -90,7 +90,7 @@ static int pepclean(const char *filename)
     ret = do_work(filename, checks_to_run);
     if (ret < 0)
         return -1;
-    
+
     /* Ignore other return value. The caller is only interested in
      * failures. */
     return 0;
@@ -101,7 +101,7 @@ static int needs_work(const char *filename, int *checks_to_run)
     FILE *fp;
     int anything = 0;
     int i;
-    
+
     fp = fopen(filename, "r");
     if (fp == NULL) {
         fprintf(stderr, "%s: fopen: %s\n", filename, strerror(errno));
@@ -253,7 +253,7 @@ static int fix_line_issues(const char *filename)
         goto error;
     }
 
-    return 0; 
+    return 0;
 
 error:
     if (out)
@@ -269,10 +269,11 @@ error:
 static int fix_line_issues_2(FILE *in, FILE *out)
 {
     char inbuf[BUFSIZ + 1];
-    char outbuf[BUFSIZ + 1];
+    char outbuf[BUFSIZ + 8 + 1];
+    char *pin, *pout;
     int i;
     size_t len;
-    inbuf[BUFSIZ] = outbuf[BUFSIZ] = '\0'; /* no overflows, ever */
+    inbuf[BUFSIZ] = outbuf[BUFSIZ + 8] = '\0'; /* no overflows, ever */
 
     while (1) {
         if (fgets(inbuf, BUFSIZ, in) == 0) {
@@ -323,8 +324,35 @@ static int fix_line_issues_2(FILE *in, FILE *out)
         inbuf[i + 1] = '\n';
         inbuf[i + 2] = '\0';
 
-        /* TODO: fix CR and TABs */
-        if (fputs(inbuf, out) < 0) {
+        /* Are there any CRs or TABs? If not, then continue quickly. */
+        if (strchr(inbuf, '\r') == NULL && strchr(inbuf, '\t') == NULL) {
+            if (fputs(inbuf, out) < 0)
+                return -1;
+            continue;
+        }
+
+        /* Bah. Look at this stuff byte-by-byte. */
+        pin = inbuf;
+        pout = outbuf;
+        do {
+            if (*pin == '\r') {
+                /* Skip. */
+                ++pin;
+                continue;
+            }
+            if (*pin == '\t') {
+                strcpy(pout, "        "); /* safe */
+                /* Ok. That was safe, but now we shall flush things. */
+                if (fputs(outbuf, out) < 0)
+                    return -1;
+                pout = outbuf;
+                ++pin;
+                continue;
+            }
+        } while ((*pout++ = *pin++) != '\0');
+
+        /* Flush it. */
+        if (fputs(outbuf, out) < 0) {
             return -1;
         }
     }
@@ -412,7 +440,7 @@ static int fix_tail_issues(const char *filename)
         }
 
         /* Check backwards until we find a non-LF. */
-        for (j = i - 1; j >= 0; --j) { 
+        for (j = i - 1; j >= 0; --j) {
             if (buf[j] != '\n') {
                 break;
             }
@@ -466,4 +494,3 @@ static int fix_tail_issues(const char *filename)
     }
     return 0;
 }
-
