@@ -334,7 +334,7 @@ static int fix_line_issues_2(FILE *in, FILE *out)
         /* Bah. Look at this stuff byte-by-byte. */
         pin = inbuf;
         pout = outbuf;
-        do {
+        while (1) {
             if (*pin == '\r') {
                 /* Skip. */
                 ++pin;
@@ -349,7 +349,10 @@ static int fix_line_issues_2(FILE *in, FILE *out)
                 ++pin;
                 continue;
             }
-        } while ((*pout++ = *pin++) != '\0');
+            if ((*pout++ = *pin++) == '\0') {
+                break;
+            }
+        }
 
         /* Flush it. */
         if (fputs(outbuf, out) < 0) {

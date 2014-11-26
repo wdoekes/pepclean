@@ -76,6 +76,11 @@ test: pepclean
 	printf '\n' >> expected
 	./pepclean mangled
 	diff -pu mangled expected
+	# double tab
+	printf '\t\tabc\n' > mangled
+	printf '                abc\n' > expected
+	./pepclean mangled
+	diff -pu mangled expected
 	@echo
 	@echo '****** FINISHED TESTS ******'
 	@echo
