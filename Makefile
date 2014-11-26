@@ -49,3 +49,12 @@ test: pepclean
 	printf 'abcdef\n' > expected
 	./pepclean mangled
 	diff -pu mangled expected
+	# giant file without LF
+	printf '' > mangled
+	for x in `seq 2048`; do \
+		printf 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' >> mangled; \
+	done
+	cp mangled expected
+	printf '\n' >> expected
+	./pepclean mangled
+	diff -pu mangled expected
