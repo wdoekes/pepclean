@@ -53,7 +53,15 @@ int main(int argc, const char **argv)
                "files that\n"
                "do not need any modification.\n"
                "\n"
-               "BEWARE: pepclean will not read past NULs!\n"
+               "BEWARE: pepclean will truncate binary files because it does "
+               "not play\n"
+               "well with embedded NULs!\n"
+               "\n"
+               "Common invocation:\n"
+               "\n"
+               "    find . '(' -name '*.html' -o -name '*.py' ')' -print0 |\n"
+               "      xargs --no-run-if-empty -0 pepclean\n"
+               "\n"
                "Public Domain, Walter Doekes, 2014\n");
         return 0;
     }
