@@ -1,16 +1,31 @@
 CFLAGS = -Wall -O3 -g
 LDFLAGS = -Wall -O3 -g
+PREFIX = /usr/local
 
 .PHONY: all
 all: pepclean test
 
+.PHONY: clean
 clean:
 	$(RM) pepclean.o pepclean mangled expected
+
+.PHONY: install
+install: $(PREFIX)/bin/pepclean
+
+.PHONY: uninstall
+uninstall:
+	$(RM) $(PREFIX)/bin/pepclean
+
+$(PREFIX)/bin/pepclean: pepclean
+	install -t $(PREFIX)/bin pepclean
 
 pepclean: pepclean.o
 
 .PHONY: test
 test: pepclean
+	@echo
+	@echo '****** RUNNING TESTS ******'
+	@echo
 	# empty file
 	printf '' > mangled
 	printf '' > expected
@@ -61,3 +76,7 @@ test: pepclean
 	printf '\n' >> expected
 	./pepclean mangled
 	diff -pu mangled expected
+	@echo
+	@echo '****** FINISHED TESTS ******'
+	@echo
+	$(RM) mangled expected
