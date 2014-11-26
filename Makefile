@@ -4,6 +4,9 @@ LDFLAGS = -Wall -O3 -g
 .PHONY: all
 all: pepclean test
 
+clean:
+	$(RM) pepclean.o pepclean mangled expected
+
 pepclean: pepclean.o
 
 .PHONY: test
