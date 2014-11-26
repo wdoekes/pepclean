@@ -221,6 +221,7 @@ static int fix_line_issues(const char *filename)
 
     /* Do the actual work. */
     if (fix_line_issues_2(in, out) < 0) {
+        fprintf(stderr, "%s: fputs: %s\n", filename, strerror(errno));
         goto error;
     }
 
@@ -258,16 +259,63 @@ error:
 
 static int fix_line_issues_2(FILE *in, FILE *out)
 {
-    char buf[BUFSIZ + 1];
+    char inbuf[BUFSIZ + 1];
+    char outbuf[BUFSIZ + 1];
+    int i;
     size_t len;
-    buf[BUFSIZ] = '\0'; /* no overflows, ever */
+    inbuf[BUFSIZ] = outbuf[BUFSIZ] = '\0'; /* no overflows, ever */
 
     while (1) {
-        /* Do any/all mangling on buf here. */
-        if (fgets(buf, BUFSIZ, in) == 0) {
+        if (fgets(inbuf, BUFSIZ, in) == 0) {
             return 0;
         }
-        if (fputs(buf, out) < 0) {
+
+        /* A couple of things to do here:
+         * - remove trailing space
+         * - remove all CRs
+         * - replace TABs with spaces
+         */
+        len = strlen(inbuf);
+        if (!len) {
+            if (fputs("\n", out) < 0)
+                return -1;
+            return 0;
+        }
+
+        /* Missing trailing LF? */
+        if (inbuf[len - 1] != '\n') {
+            if (len == BUFSIZ - 1) {
+                /* Long line... not touching that. */
+                if (fputs(inbuf, out) < 0)
+                    return -1;
+                continue;
+            }
+            inbuf[len] = '\n';
+            len += 1;
+        }
+
+        /* Single LF? */
+        if (len == 1) {
+            if (fputs("\n", out) < 0)
+                return -1;
+            continue;
+        }
+
+        /* Trailing spaces or TABs or CRs? */
+        for (i = len - 2; i >= 0; --i) {
+            if (inbuf[i] != ' ' && inbuf[i] != '\t' && inbuf[i] != '\r')
+                break;
+        }
+        if (i < 0) {
+            if (fputs("\n", out) < 0)
+                return -1;
+            continue;
+        }
+        inbuf[i + 1] = '\n';
+        inbuf[i + 2] = '\0';
+
+        /* TODO: fix CR and TABs */
+        if (fputs(inbuf, out) < 0) {
             return -1;
         }
     }

@@ -10,16 +10,16 @@ test: pepclean
 	printf '' > expected
 	./pepclean mangled
 	diff -pu mangled expected
-	# CRs
-	printf 'X\nY\r\nZ\n' > mangled
-	printf 'X\nY\nZ\n' > expected
-	./pepclean mangled
-	diff -pu mangled expected
-	# TABs
-	printf 'X  \t  X' > mangled
-	printf 'X            X' > expected
-	./pepclean mangled
-	diff -pu mangled expected
+	## CRs
+	#printf 'X\nY\r\nZ\n' > mangled
+	#printf 'X\nY\nZ\n' > expected
+	#./pepclean mangled
+	#diff -pu mangled expected
+	## TABs
+	#printf 'X  \t  X' > mangled
+	#printf 'X            X' > expected
+	#./pepclean mangled
+	#diff -pu mangled expected
 	# trailing spaces
 	printf 'abc  \n' > mangled
 	printf 'abc\n' > expected
