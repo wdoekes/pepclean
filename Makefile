@@ -29,22 +29,22 @@ test: pepclean
 	# empty file
 	printf '' > mangled
 	printf '' > expected
-	./pepclean mangled
+	./pepclean mangled; test $$? -eq 0
 	diff -pu mangled expected
 	# CRs
 	printf 'X\nY\r\nZ\n' > mangled
 	printf 'X\nY\nZ\n' > expected
-	./pepclean mangled
+	./pepclean mangled; test $$? -eq 2
 	diff -pu mangled expected
 	# TABs
 	printf 'X  \t  X\n' > mangled
 	printf 'X            X\n' > expected
-	./pepclean mangled
+	./pepclean mangled; test $$? -eq 2
 	diff -pu mangled expected
 	# trailing spaces
 	printf 'abc  \n' > mangled
 	printf 'abc\n' > expected
-	./pepclean mangled
+	./pepclean mangled; test $$? -eq 2
 	diff -pu mangled expected
 	# one or more LFs
 	printf 'a\n' > expected
@@ -60,12 +60,12 @@ test: pepclean
 	# single LF
 	printf '\n' > mangled
 	printf '' > expected
-	./pepclean mangled
+	./pepclean mangled; test $$? -eq 2
 	diff -pu mangled expected
 	# zero LFs
 	printf 'abcdef' > mangled
 	printf 'abcdef\n' > expected
-	./pepclean mangled
+	./pepclean mangled; test $$? -eq 2
 	diff -pu mangled expected
 	# giant file without LF
 	printf '' > mangled
@@ -74,12 +74,12 @@ test: pepclean
 	done
 	cp mangled expected
 	printf '\n' >> expected
-	./pepclean mangled
+	./pepclean mangled; test $$? -eq 2
 	diff -pu mangled expected
 	# double tab
 	printf '\t\tabc\n' > mangled
 	printf '                abc\n' > expected
-	./pepclean mangled
+	./pepclean mangled; test $$? -eq 2
 	diff -pu mangled expected
 	@echo
 	@echo '****** FINISHED TESTS ******'

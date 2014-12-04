@@ -62,15 +62,21 @@ int main(int argc, const char **argv)
                "    find . '(' -name '*.html' -o -name '*.py' ')' -print0 |\n"
                "      xargs --no-run-if-empty -0 pepclean\n"
                "\n"
+               "Returns value 0 if nothing was changed, 1 on error and 2 if "
+               "anything\n"
+               "was changed. The non-zero return value makes it easier for "
+               "pre-commit\n"
+               "hooks to abort early.\n"
+               "\n"
                "Public Domain, Walter Doekes, 2014\n");
         return 0;
     }
 
     for (i = 1; i < argc; ++i) {
-        ret = pepclean(argv[i]) || ret;
+        ret = pepclean(argv[i]) | ret;
     }
 
-    return ret == 0 ? 0 : 1;
+    return ret == 0 ? 0 : (ret == -1 ? 1 : 2);
 }
 
 static int pepclean(const char *filename)
@@ -93,7 +99,7 @@ static int pepclean(const char *filename)
 
     /* Ignore other return value. The caller is only interested in
      * failures. */
-    return 0;
+    return 1;
 }
 
 static int needs_work(const char *filename, int *checks_to_run)
