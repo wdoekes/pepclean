@@ -1,3 +1,5 @@
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fwdoekes%2Fpepclean.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fwdoekes%2Fpepclean?ref=badge_shield)
+
 pepclean
 ========
 
@@ -130,3 +132,7 @@ It now looks like this:
 That went from 3 seconds system (2s real) time to about 50 ms (100 ms
 real) on a sample of about 1000 files.  And the C version also fixes
 the files with missing trailing newlines.
+
+
+## License
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fwdoekes%2Fpepclean.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fwdoekes%2Fpepclean?ref=badge_large)
